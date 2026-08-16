@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Auth & ABAC Playground</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-8 font-sans">
+  <div class="max-w-4xl mx-auto space-y-8">
+    
+    <header class="border-b border-slate-700 pb-4">
+      <h1 class="text-3xl font-bold text-emerald-400">B2B Auth & Policy Control Center</h1>
+      <p class="text-slate-400 text-sm mt-1">Интерактивный стенд проверки RBAC/ABAC изоляции и прав доступа</p>
+    </header>
+
+    <!-- Step 1: Create Tenant -->
+    <section class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+      <h2 class="text-xl font-semibold mb-3 text-emerald-300">1. Создание компании (Tenant)</h2>
+      <div class="flex gap-4 mb-4">
+        <input id="tenantName" type="text" value="Acme Corp" placeholder="Название" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm w-1/2 focus:outline-none focus:border-emerald-500">
+        <input id="tenantDomain" type="text" value="acme.com" placeholder="Домен" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm w-1/2 focus:outline-none focus:border-emerald-500">
+        <button onclick="createTenant()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-2 rounded text-sm transition">Создать</button>
+      </div>
+      <div id="tenantOutput" class="text-xs font-mono bg-slate-950 p-3 rounded text-slate-400">Tenant ID еще не создан</div>
+    </section>
+
+    <!-- Step 2: Register User -->
+    <section class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+      <h2 class="text-xl font-semibold mb-3 text-emerald-300">2. Регистрация сотрудника</h2>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <input id="userEmail" type="email" value="alex@acme.com" placeholder="Email" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm">
+        <input id="userPassword" type="password" value="superpassword123" placeholder="Пароль" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm">
+        <select id="userDepartment" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm">
+          <option value="Finance">Отдел: Finance</option>
+          <option value="IT">Отдел: IT</option>
+          <option value="Sales">Отдел: Sales</option>
+        </select>
+        <button onclick="registerUser()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-2 rounded text-sm transition">Зарегистрировать</button>
+      </div>
+      <div id="userOutput" class="text-xs font-mono bg-slate-950 p-3 rounded text-slate-400">Пользователь не зарегистрирован</div>
+    </section>
+
+    <!-- Step 3: Login & Token status -->
+    <section class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+      <h2 class="text-xl font-semibold mb-3 text-emerald-300">3. Авторизация (Получение JWT)</h2>
+      <button onclick="loginUser()" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2 rounded text-sm transition mb-4">Войти под пользователем</button>
+      <div id="tokenOutput" class="text-xs font-mono bg-slate-950 p-3 rounded text-slate-400 break-all">Токен отсутствует (Не авторизован)</div>
+    </section>
+
+    <!-- Step 4: ABAC Sandbox -->
+    <section class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+      <h2 class="text-xl font-semibold mb-2 text-emerald-300">4. Проверка ABAC-политики (Одобрение счетов)</h2>
+      <p class="text-xs text-slate-400 mb-4">Правило ABAC: Доступ разрешен только для департамента <span class="text-emerald-400">Finance</span> при сумме <span class="text-emerald-400">≤ $10,000</span>.</p>
+      
+      <div class="flex items-center gap-4 mb-4">
+        <label class="text-sm">Случайная сумма счёта:</label>
+        <input id="invoiceAmount" type="number" value="5000" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm w-32">
+        <button onclick="approveInvoice()" class="bg-purple-600 hover:bg-purple-500 text-white font-medium px-5 py-2 rounded text-sm transition">Проверить доступ</button>
+      </div>
+
+      <div id="abacResult" class="p-4 rounded text-sm font-medium hidden"></div>
+    </section>
+
+  </div>
+
+  <script>
+    let currentTenantId = null;
+    let currentUserToken = null;
+
+    async function createTenant() {
+      const name = document.getElementById('tenantName').value;
+      const domain = document.getElementById('tenantDomain').value;
+      
+      const res = await fetch('/api/v1/tenants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, domain })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        currentTenantId = data.id;
+        document.getElementById('tenantOutput').innerText = `Успешно! Tenant ID: ${data.id}`;
+        document.getElementById('tenantOutput').className = "text-xs font-mono bg-slate-950 p-3 rounded text-emerald-400";
+      } else {
+        document.getElementById('tenantOutput').innerText = JSON.stringify(data);
+      }
+    }
+
+    async function registerUser() {
+      if (!currentTenantId) return alert('Сначала создайте Tenant на Шаге 1!');
+      
+      const email = document.getElementById('userEmail').value;
+      const password = document.getElementById('userPassword').value;
+      const department = document.getElementById('userDepartment').value;
+
+      const res = await fetch('/api/v1/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: currentTenantId, email, password, department })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('userOutput').innerText = `Пользователь создан! ID: ${data.id} | Отдел: ${data.department}`;
+        document.getElementById('userOutput').className = "text-xs font-mono bg-slate-950 p-3 rounded text-emerald-400";
+      } else {
+        document.getElementById('userOutput').innerText = JSON.stringify(data);
+      }
+    }
+
+    async function loginUser() {
+      const email = document.getElementById('userEmail').value;
+      const password = document.getElementById('userPassword').value;
+
+      const res = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        currentUserToken = data.access_token;
+        document.getElementById('tokenOutput').innerText = `JWT Token: ${currentUserToken}`;
+        document.getElementById('tokenOutput').className = "text-xs font-mono bg-slate-950 p-3 rounded text-emerald-400 break-all";
+      } else {
+        document.getElementById('tokenOutput').innerText = "Ошибка входа!";
+      }
+    }
+
+    async function approveInvoice() {
+      if (!currentUserToken) return alert('Сначала выполните вход на Шаге 3!');
+      
+      const amount = document.getElementById('invoiceAmount').value;
+      const res = await fetch(`/api/v1/invoices/inv-101/approve?amount=${amount}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${currentUserToken}` }
+      });
+      
+      const abacBox = document.getElementById('abacResult');
+      abacBox.classList.remove('hidden');
+
+      if (res.ok) {
+        abacBox.className = "p-4 rounded text-sm font-medium bg-emerald-950 text-emerald-300 border border-emerald-700";
+        abacBox.innerText = `[200 OK] Доступ разрешен! Счёт на $${amount} успешно одобрен.`;
+      } else {
+        const errorData = await res.json();
+        abacBox.className = "p-4 rounded text-sm font-medium bg-rose-950 text-rose-300 border border-rose-700";
+        abacBox.innerText = `[403 Forbidden] Отказ: ${errorData.detail || 'Нарушение политики ABAC'}`;
+      }
+    }
+  </script>
+</body>
+</html>

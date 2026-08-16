@@ -1,0 +1,17 @@
+# Python & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# Docker & Databases
+*.sqlite3
+pgdata/
+
+# IDE
+.vscode/
+.idea/

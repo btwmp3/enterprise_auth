@@ -1,0 +1,41 @@
+services:
+  # 1. Сервис Базы Данных (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: b2b_auth_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_b2b_password
+      POSTGRES_DB: enterprise_auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # Сохраняем данные БД на диске ПК, чтобы они не удалялись при остановке контейнера
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Проверка: ждём, пока база станет полностью готова принимать подключения
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Наш FastAPI Backend Сервис
+  web:
+    build: .
+    container_name: b2b_auth_api
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      # Пробрасываем локальный код в контейнер, чтобы при изменениях файл `--reload` обновлял приложение на лету
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres_b2b_password@db:5432/enterprise_auth_db
+    depends_on:
+      db:
+        condition: service_healthy # Ждём запуска базы, перед тем как стартовать веб-сервер
+
+volumes:
+  postgres_data:
