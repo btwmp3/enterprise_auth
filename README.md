@@ -1,75 +1,68 @@
 # Enterprise B2B Auth & Policy Service
 
-A high-performance microservice for authentication and authorization supporting **Multi-tenancy**, **RBAC** (Role-Based Access Control), and dynamic **ABAC** (Attribute-Based Access Control).
+Multi-tenant authentication and authorization microservice with hybrid **RBAC + ABAC** access control.
 
-## 🚀 Key Features
+## Features
 
-* **Multi-Tenancy:** Complete tenant isolation at the database schema level.
-* **Hybrid Auth Engine:** 
-  * **RBAC:** Fine-grained permissions (`invoices:approve`, `roles:write`).
-  * **ABAC:** Dynamic contextual rule evaluation (user department, resource attributes, limits).
-* **JWT Security:** Stateless tokens using HS256 with expiration and custom claims.
-* **Alembic Migrations:** Database schema versioning with PostgreSQL.
-* **Containerized:** Ready-to-use Docker and Docker Compose environment.
+- Multi-tenancy (tenant isolation)
+- Role-Based Access Control (RBAC) with fine-grained permissions
+- Attribute-Based Access Control (ABAC) with dynamic rules
+- JWT authentication
+- Docker + Docker Compose ready
+- Alembic migrations
+- Example business endpoint with policy check
 
----
+## Tech Stack
 
-## 🛠 Tech Stack
+- Python 3.11+
+- FastAPI
+- PostgreSQL + SQLAlchemy 2.0
+- Alembic
+- PyJWT + Passlib
+- Docker
 
-* **Language:** Python 3.11+
-* **Framework:** FastAPI
-* **Database:** PostgreSQL + SQLAlchemy 2.0
-* **Migrations:** Alembic
-* **Security:** PyJWT, Passlib (bcrypt)
-* **DevOps:** Docker, Docker Compose
+## Quick Start
 
----
+### 1. Clone & setup
 
-## 🏁 Quick Start
+git clone https://github.com/btwmp3/enterprise_auth.git
+cd enterprise_auth
+cp .env.example .env
 
-### 1. Environment Setup
-Create a `.env` file in the project root:
-```env
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres_b2b_password
-POSTGRES_DB=enterprise_auth_db
-DATABASE_URL=postgresql://postgres:postgres_b2b_password@db:5432/enterprise_auth_db
-SECRET_KEY=super_secret_b2b_key
+### 2. Run with Docker
 
-# Enterprise B2B Auth & Policy Service
+Bash docker-compose up --build
 
-Высокопроизводительный микросервис аутентификации и авторизации с поддержкой **Multi-tenancy**, **RBAC** (Role-Based Access Control) и динамического **ABAC** (Attribute-Based Access Control).
+Interactive UI stand on http://localhost:8000
+  It features a step-by-step interface:
+  1. Company (tenant) creation
+  2. User registration
+  3. JWT retrieval
+  4. ABAC policy verification using invoice approval as an example
 
-## 🚀 Основные возможности
+![Interactive Auth & ABAC Playground Demo](./assets/demo.gif)
 
-* **Multi-Tenancy:** Полная изоляция клиентов (отделов/компаний) на уровне базы данных.
-* **Гибридный Auth Engine:** 
-  * **RBAC:** Доступ на основе ролей и атомарных разрешений (`invoices:approve`, `roles:write`).
-  * **ABAC:** Динамическая вычисление правил доступа по контексту (атрибуты пользователя, отдела, лимиты суммы).
-* **JWT Security:** Выдача подписи токенов через HS256 с тайм-аутом сессии и заявками (claims).
-* **Alembic Migrations:** Управление схемой базы данных PostgreSQL без потери данных.
-* **Docker Ready:** Полноценный Docker-compose сетап с изоляцией окружения.
+Swagger UI: http://localhost:8000/docs
 
----
+### 3. Basic usage flow for Swagger UI
 
-## 🛠 Стек технологий
+Create a tenant (POST /api/v1/tenants)
+Register a user (POST /api/v1/auth/register)
+Log in and obtain a JWT (POST /api/v1/auth/login)
+Create a role with permissions (POST /api/v1/roles)
+Assign a role to a user
+Verify access using the /api/v1/invoices/{id}/approve endpoint as an example
 
-* **Language:** Python 3.11+
-* **Framework:** FastAPI
-* **Database:** PostgreSQL + SQLAlchemy 2.0
-* **Migrations:** Alembic
-* **Security:** PyJWT, Passlib (bcrypt)
-* **Infrastructure:** Docker, Docker Compose
+### 4. Project Structure
 
----
+app/
+├── api/          # Endpoints & dependencies
+├── core/         # Security, config
+├── db/           # Database session
+├── models/       # SQLAlchemy models
+├── schemas/      # Pydantic schemas
+└── services/     # Policy engine etc.
 
-## 🏁 Быстрый запуск
-
-### 1. Клонирование и настройка окружения
-Создайте файл `.env` в корне проекта (или скопируйте `.env.example`):
-```bash
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres_b2b_password
-POSTGRES_DB=enterprise_auth_db
-DATABASE_URL=postgresql://postgres:postgres_b2b_password@db:5432/enterprise_auth_db
-SECRET_KEY=super_secret_b2b_key
+### 5. Status
+MVP / Proof of Concept.
+Core RBAC + basic ABAC working. Ready for extension and integration.

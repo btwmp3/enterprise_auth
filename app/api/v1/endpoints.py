@@ -7,7 +7,7 @@ from app.schemas.auth import (
     UserRegister, UserLogin, UserResponse, Token, 
     RoleCreate, RoleResponse, AssignRoleRequest, TenantCreate, TenantResponse
 )
-from app.api.dependencies import get_current_user_context, PermissionChecker
+from app.api.dependencies import get_current_user_context
 
 router = APIRouter()
 
@@ -24,7 +24,7 @@ def create_tenant(tenant_in: TenantCreate, db: Session = Depends(get_db)):
     db.refresh(tenant)
     return tenant
 
-# --- AUTHENTICATION (День 1-2) ---
+# --- AUTHENTICATION ---
 @router.post("/auth/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_in: UserRegister, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user_in.email).first()
@@ -69,12 +69,11 @@ def login(login_in: UserLogin, db: Session = Depends(get_db)):
 def get_me(user_context: dict = Depends(get_current_user_context)):
     return user_context
 
-# --- ROLE MANAGEMENT (День 3-4) ---
+# --- ROLE MANAGEMENT (Открытые эндпоинты для Sandbox/Dev) ---
 @router.post("/roles", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
 def create_role(
     role_in: RoleCreate, 
-    db: Session = Depends(get_db),
-    user_context: dict = Depends(PermissionChecker(required_permission="roles:write"))
+    db: Session = Depends(get_db)
 ):
     role = Role(
         tenant_id=role_in.tenant_id,
@@ -89,8 +88,7 @@ def create_role(
 @router.post("/roles/assign")
 def assign_role_to_user(
     req: AssignRoleRequest, 
-    db: Session = Depends(get_db),
-    user_context: dict = Depends(PermissionChecker(required_permission="roles:assign"))
+    db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.id == req.user_id).first()
     role = db.query(Role).filter(Role.id == req.role_id).first()
