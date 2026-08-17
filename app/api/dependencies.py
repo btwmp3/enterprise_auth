@@ -37,7 +37,7 @@ class PermissionChecker:
         # Собираем ПОЛНЫЙ контекст для ABAC
         context = {
             "user": {
-                "department": user_context.get("department", "Finance"),
+                "department": user_context.get("department"),
                 "roles": user_context.get("roles", [])
             },
             "resource": {

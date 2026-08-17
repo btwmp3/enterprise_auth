@@ -31,8 +31,6 @@ cp .env.example .env
 
 ### 2. Run with Docker
 
-Bash docker-compose up --build
-
 Interactive UI stand on http://localhost:8000
   It features a step-by-step interface:
   1. Company (tenant) creation
